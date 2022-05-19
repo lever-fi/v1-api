@@ -18,6 +18,18 @@ router.get("/volume/", async (req, res) => {
 	}
 });
 
+router.get("/floor/", async (req, res) => {
+	try {
+		const { chain, address, time } = req.query;
+
+		res.status(200).send({
+			floor: 50.795,
+		});
+	} catch (err) {
+		return res.status(400).send(err?.message || error);
+	}
+});
+
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use(cookieParser());
