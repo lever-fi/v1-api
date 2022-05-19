@@ -6,6 +6,10 @@ import cookieParser from "cookie-parser";
 const app = express();
 const router = express.Router();
 
+router.get("/home/", async (req, res) => {
+	res.status(200).send("Currently only supporting /volume and /floor");
+});
+
 router.get("/volume/", async (req, res) => {
 	try {
 		const { chain, address, time } = req.query;
