@@ -13,6 +13,10 @@ class LooksRareClient {
 		this.apiKey = apiKey;
 	}
 
+	format(num) {
+		return parseFloat(utils.formatEther(BigNumber.from(num)));
+	}
+
 	async getOrder(collection, tokenId, isOrderAsk = true) {
 		try {
 			const { data } = await axios.get(
@@ -65,20 +69,24 @@ class LooksRareClient {
 			one_day_change: data.change24h || 0,
 			one_day_sales: data.count24h || 0,
 			one_day_average_price: data.average24h || 0,
-			seven_day_volume: data.volume7d || 0,
+			seven_day_volume: this.format(data.volume7d) || 0,
 			seven_day_change: data.change7d || 0,
 			seven_day_sales: data.count7d || 0,
-			seven_day_average_price: data.average7d || 0,
-			thirty_day_volume: data.volume1m || 0,
+			seven_day_average_price: this.format(data.average7d) || 0,
+			thirty_day_volume: this.format(data.volume1m) || 0,
 			thirty_day_change: data.change1m || 0,
 			thirty_day_sales: data.count1m || 0,
-			thirty_day_average_price: data.average1m || 0,
-			total_volume: data.volumeAll,
-			count: data.countAll,
+			thirty_day_average_price: this.format(data.average1m) || 0,
+			total_volume: this.format(data.volumeAll),
+			total_sales: data.countAll,
+			total_supply: data.totalSupply,
+			count: data.totalSupply,
 			num_owners: data.countOwners,
-			average_price: data.averageAll,
-			market_cap: data.totalSupply * data.averageAll,
-			floor_price: data.floorPrice,
+			average_price: this.format(data.averageAll),
+			market_cap: this.format(
+				BigNumber.from(data.averageAll).mul(data.totalSupply).toString()
+			),
+			floor_price: this.format(data.floorPrice),
 		};
 	}
 

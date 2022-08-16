@@ -71,18 +71,20 @@ router.get("/floor/", async (req, res) => {
 });
 
 const main = async (address) => {
-	const lrOrder = await looksRareClient.getOrder(
+	/* const lrOrder = await looksRareClient.getOrder(
 		"0x104Edd8aABf30bDCc96252edb80aef9Fcb69fdD5",
 		"1",
 		true
 	);
 
-	console.log(lrOrder);
-	/* const osStats = await openseaClient.getStats(address);
+	console.log(lrOrder); */
+	const osStats = await openSeaClient.getStats(address);
 	const lrStats = await looksRareClient.getStats(address);
-	let stats = osStats.standardizeStats(osStats);
 
-	console.log(stats);
+	console.log("OPENSEA");
+	console.log(openSeaClient.standardizeStats(osStats));
+	console.log("\nLOOKSRARE");
+	console.log(looksRareClient.standardizeStats(lrStats));
 	//const stats = await openseaClient.getStats(address);
 	//console.log(stats); */
 };

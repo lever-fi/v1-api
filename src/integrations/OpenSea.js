@@ -11,8 +11,11 @@ class OpenSeaClient {
 		try {
 			const { data } = await axios.get(
 				//?asset_contract_address=${collection}&token_ids=${tokenId}&limit=${limit}
-				"https://testnets-api.opensea.io/v2/orders/rinkeby/seaport/listings",
+				"https://api.opensea.io/v2/orders/seaport/listings",
 				{
+					headers: {
+						"X-API-KEY": this.apiKey,
+					},
 					params: {
 						asset_contract_address: collection,
 						token_ids: tokenId,
@@ -25,7 +28,7 @@ class OpenSeaClient {
 				throw "Order Error";
 			}
 
-			return data.data[0];
+			return data;
 		} catch {}
 	}
 
@@ -53,7 +56,7 @@ class OpenSeaClient {
 				`https://api.opensea.io/api/v1/collection/${slug}/stats/`,
 				{
 					headers: {
-						"X-API-KEY": process.env.OPENSEA_API_KEY,
+						"X-API-KEY": this.apiKey,
 					},
 				}
 			);
@@ -65,6 +68,7 @@ class OpenSeaClient {
 	}
 
 	standardizeStats(data) {
+		delete data.num_reports;
 		return data;
 	}
 
