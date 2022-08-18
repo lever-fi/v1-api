@@ -92,7 +92,7 @@ router.get("/floor/", async (req, res) => {
 	}
 });
 
-router.get("/best/order", async (req, res) => {
+router.get("/best/listing", async (req, res) => {
 	try {
 		let order = {};
 		let prices = [];
@@ -108,7 +108,7 @@ router.get("/best/order", async (req, res) => {
 		if (Object.keys(order).length == 0) {
 			return res.status(404).send({
 				success: false,
-				message: "Listing does not exist on compatible marketplaces",
+				message: "No listings exist on compatible marketplaces",
 			});
 		}
 
