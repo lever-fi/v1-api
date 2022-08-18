@@ -3,7 +3,9 @@
 	"type": "module",
 	"scripts": {
 		"start": "node --experimental-specifier-resolution=node src/index.js",
-		"deploy": "git push heroku master"
+		"deploy": "git push heroku master",
+		"postinstall": "link-module-alias",
+		"preinstall": "command -v link-module-alias && link-module-alias clean || true"
 	},
 	"dependencies": {
 		"@looksrare/sdk": "^0.7.4",
@@ -18,5 +20,13 @@
 	},
 	"engines": {
 		"node": "16.x"
+	},
+	"devDependencies": {
+		"link-module-alias": "^1.2.0"
+	},
+	"_moduleAliases": {
+		"src": "src",
+		"integrations": "src/integrations",
+		"utils": "src/utils"
 	}
 }
