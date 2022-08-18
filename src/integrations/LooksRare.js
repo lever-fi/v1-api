@@ -1,12 +1,11 @@
 import axios from "axios";
 import { utils, BigNumber } from "ethers";
-import {
+import { weiToFloat, encode } from "utils";
+/* import {
 	signMakerOrder,
 	addressesByNetwork,
 	SupportedChainId,
-} from "@looksrare/sdk";
-
-// convert string to bignumber
+} from "@looksrare/sdk"; */
 
 class LooksRareClient {
 	constructor(apiKey) {
@@ -61,6 +60,34 @@ class LooksRareClient {
 		} catch (err) {
 			//
 		}
+	}
+
+	encodeOrder(data) {
+		return encode(
+			[
+				"tuple(bool, address, address, uint256, uint256, uint256, address, address, uint256, uint256, uint256, uint256, bytes, uint8, bytes32, bytes32)",
+			],
+			[
+				[
+					true,
+					data.signer,
+					data.collectionAddress,
+					data.price,
+					data.tokenId,
+					data.amount,
+					data.strategy,
+					data.currencyAddress,
+					data.nonce,
+					data.startTime,
+					data.endTime,
+					data.minPercentageToAsk,
+					JSON.parse(data.params === "" ? "[]" : data.params),
+					data.v,
+					data.r,
+					data.s,
+				],
+			]
+		);
 	}
 
 	standardizeStats(data) {
@@ -135,28 +162,4 @@ export default LooksRareClient;
     averageAll: '16536741468015335052',
     countAll: 776
 } 
-*/
-
-/* 
-{
-	hash: '0x9976bda558d672c3f2c5fc300231353c47b57cb04e533e289ad62beed4a75fa0',
-	collectionAddress: '0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D',
-	tokenId: '7369',
-	isOrderAsk: true,
-	signer: '0xed2ab4948bA6A909a7751DEc4F34f303eB8c7236',
-	strategy: '0x56244Bb70CbD3EA9Dc8007399F61dFC065190031',
-	currencyAddress: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
-	amount: 1,
-	price: '88540000000000000000',
-	nonce: '568',
-	startTime: 1655924459,
-	endTime: 1656529258,
-	minPercentageToAsk: 8500,
-	params: '',
-	status: 'VALID',
-	signature: '0xef59ab33e4caf4b0edb10d80166c6633c2b5693019a9c791ba4e31c361ddc9270dd8c71458817d1163092797dad1686f9907c96c669fa3f91e19c034d68d510700',
-	v: 27,
-	r: '0xef59ab33e4caf4b0edb10d80166c6633c2b5693019a9c791ba4e31c361ddc927',
-	s: '0x0dd8c71458817d1163092797dad1686f9907c96c669fa3f91e19c034d68d5107'
-}
 */

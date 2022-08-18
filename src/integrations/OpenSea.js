@@ -1,20 +1,27 @@
 import axios from "axios";
+import { encode } from "utils";
 
-// convert to bignumber
+const TESTING = true;
+const test_host = "testnets-api.opensea.io";
+const official_host = "api.opensea.io";
 
 class OpenSeaClient {
 	constructor(apiKey) {
+		this.hostName = TESTING ? test_host : official_host;
 		this.apiKey = apiKey;
 	}
 
 	async getOrder(collection, tokenId) {
 		try {
+			let limit = 1;
 			const { data } = await axios.get(
 				//?asset_contract_address=${collection}&token_ids=${tokenId}&limit=${limit}
-				"https://api.opensea.io/v2/orders/seaport/listings",
+				`https://${this.hostName}/v2/orders/rinkeby/seaport/listings?limit=1`,
+				//"https://api.opensea.io/v2/orders/seaport/listings",
 				{
 					headers: {
-						"X-API-KEY": this.apiKey,
+						Accept: "application/json",
+						//"X-API-KEY": this.apiKey,
 					},
 					params: {
 						asset_contract_address: collection,
@@ -24,22 +31,27 @@ class OpenSeaClient {
 				}
 			);
 
-			if (!data.success || data.data.length == 0) {
+			if (data.orders.length == 0) {
 				throw "Order Error";
 			}
 
-			return data;
+			let order = data.orders[0];
+
+			order.price = order?.current_price;
+			delete order.current_price;
+
+			return order;
 		} catch {}
 	}
 
 	async getSlug(address) {
 		try {
 			const { data } = await axios.get(
-				`https://api.opensea.io/api/v1/asset_contract/${address}`,
+				`https://${this.hostName}/api/v1/asset_contract/${address}`,
 				{
-					headers: {
+					/* headers: {
 						"X-API-KEY": this.apiKey,
-					},
+					}, */
 				}
 			);
 
@@ -53,18 +65,56 @@ class OpenSeaClient {
 		try {
 			const slug = await this.getSlug(address);
 			const { data } = await axios.get(
-				`https://api.opensea.io/api/v1/collection/${slug}/stats/`,
+				`https://${this.hostName}/api/v1/collection/${slug}/stats/`,
 				{
-					headers: {
+					/* headers: {
 						"X-API-KEY": this.apiKey,
-					},
+					}, */
 				}
 			);
+
+			data.slug = slug;
 
 			return data.stats;
 		} catch (err) {
 			//
 		}
+	}
+
+	encodeOrder(data) {
+		let protocolData = data.protocol_data;
+		let parameters = protocolData.parameters;
+		return encode(
+			[
+				"tuple(address, uint256, uint256, address, address, address, uint256, uint256, uint8, uint256, uint256, bytes32, uint256, bytes32, bytes32, uint256, tuple(uint256, address)[], bytes)",
+				"uint256",
+			],
+			[
+				[
+					parameters.consideration[0].token,
+					parameters.consideration[0].identifierOrCriteria,
+					parameters.totalOriginalConsiderationItems,
+					parameters.offerer,
+					parameters.zone,
+					parameters.offer[0].token,
+					parameters.offer[0].identifierOrCriteria,
+					parameters.offer[0].startAmount,
+					parameters.orderType,
+					parameters.startTime,
+					parameters.endTime,
+					parameters.zoneHash,
+					parameters.salt,
+					parameters.conduitKey,
+					"0x0000000000000000000000000000000000000000000000000000000000000000",
+					parameters.consideration.length,
+					parameters.consideration.map((item) => {
+						return [item.startAmount, item.recipient];
+					}),
+					protocolData.signature,
+				],
+				data.price,
+			]
+		);
 	}
 
 	standardizeStats(data) {
