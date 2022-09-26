@@ -20,7 +20,8 @@ class LooksRareClient {
 		try {
 			const { data } = await axios.get(
 				//?isOrderAsk=${isOrderAsk}&collection=${collection}&tokenId=${tokenId}&status%5B%5D=VALID&pagination%5Bfirst%5D=1&sort=NEWEST
-				"https://api-rinkeby.looksrare.org/api/v1/orders",
+				//"https://api-rinkeby.looksrare.org/api/v1/orders",
+				"https://api.looksrare.org/api/v1/orders",
 				{
 					params: {
 						isOrderAsk,

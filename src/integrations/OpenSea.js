@@ -1,14 +1,22 @@
 import axios from "axios";
 import { encode } from "utils";
+import { ethers, BigNumber } from "ethers";
 
-const TESTING = true;
+import { SeaportOrderValidator } from "@opensea/seaport-order-validator";
+
+const TESTING = false;
 const test_host = "testnets-api.opensea.io";
 const official_host = "api.opensea.io";
 
 class OpenSeaClient {
-	constructor(apiKey) {
+	constructor(apiKey, rpcUrl) {
 		this.hostName = TESTING ? test_host : official_host;
 		this.apiKey = apiKey;
+		this.validator = rpcUrl
+			? new SeaportOrderValidator(
+					new ethers.providers.JsonRpcProvider(rpcUrl)
+			  )
+			: undefined;
 	}
 
 	async getOrder(collection, tokenId) {
@@ -16,12 +24,12 @@ class OpenSeaClient {
 			let limit = 1;
 			const { data } = await axios.get(
 				//?asset_contract_address=${collection}&token_ids=${tokenId}&limit=${limit}
-				`https://${this.hostName}/v2/orders/rinkeby/seaport/listings?limit=1`,
-				//"https://api.opensea.io/v2/orders/seaport/listings",
+				//`https://${this.hostName}/v2/orders/rinkeby/seaport/listings?limit=1`,
+				"https://api.opensea.io/v2/orders/ethereum/seaport/listings",
 				{
 					headers: {
 						Accept: "application/json",
-						//"X-API-KEY": this.apiKey,
+						"X-API-KEY": this.apiKey,
 					},
 					params: {
 						asset_contract_address: collection,
@@ -41,7 +49,7 @@ class OpenSeaClient {
 			delete order.current_price;
 
 			return order;
-		} catch {}
+		} catch (e) {}
 	}
 
 	async getSlug(address) {
@@ -49,9 +57,9 @@ class OpenSeaClient {
 			const { data } = await axios.get(
 				`https://${this.hostName}/api/v1/asset_contract/${address}`,
 				{
-					/* headers: {
+					headers: {
 						"X-API-KEY": this.apiKey,
-					}, */
+					},
 				}
 			);
 
@@ -67,9 +75,9 @@ class OpenSeaClient {
 			const { data } = await axios.get(
 				`https://${this.hostName}/api/v1/collection/${slug}/stats/`,
 				{
-					/* headers: {
+					headers: {
 						"X-API-KEY": this.apiKey,
-					}, */
+					},
 				}
 			);
 
@@ -81,9 +89,148 @@ class OpenSeaClient {
 		}
 	}
 
+	validateOrder(data) {
+		let protocolData = data.protocol_data;
+		let parameters = protocolData.parameters;
+
+		return this.validator.isValidOrder({
+			parameters: {
+				offerer: parameters.offerer,
+				zone: parameters.zone,
+				offer: parameters.offer,
+				consideration: parameters.consideration,
+				orderType: parameters.orderType,
+				startTime: parameters.startTime,
+				endTime: parameters.endTime,
+				zoneHash: parameters.zoneHash,
+				salt: parameters.salt,
+				conduitKey: parameters.conduitKey,
+				totalOriginalConsiderationItems:
+					parameters.totalOriginalConsiderationItems,
+			},
+			signature: protocolData.signature,
+		});
+	}
+
+	validateConsiderationItems(data) {
+		let protocolData = data.protocol_data;
+		let parameters = protocolData.parameters;
+
+		return this.validator.validateConsiderationItems({
+			offerer: parameters.offerer,
+			zone: parameters.zone,
+			offer: parameters.offer,
+			consideration: parameters.consideration,
+			orderType: parameters.orderType,
+			startTime: parameters.startTime,
+			endTime: parameters.endTime,
+			zoneHash: parameters.zoneHash,
+			salt: parameters.salt,
+			conduitKey: parameters.conduitKey,
+			totalOriginalConsiderationItems:
+				parameters.totalOriginalConsiderationItems,
+		});
+	}
+
+	validateSignature(data) {
+		let protocolData = data.protocol_data;
+		let parameters = protocolData.parameters;
+
+		return this.validator.validateSignature({
+			parameters: {
+				offerer: parameters.offerer,
+				zone: parameters.zone,
+				offer: parameters.offer,
+				consideration: parameters.consideration,
+				orderType: parameters.orderType,
+				startTime: parameters.startTime,
+				endTime: parameters.endTime,
+				zoneHash: parameters.zoneHash,
+				salt: parameters.salt,
+				conduitKey: parameters.conduitKey,
+				totalOriginalConsiderationItems:
+					parameters.totalOriginalConsiderationItems,
+			},
+			signature: protocolData.signature,
+		});
+	}
+
+	/*
+	address offerer; // 0x00
+    address zone; // 0x20
+    OfferItem[] offer; // 0x40
+    ConsiderationItem[] consideration; // 0x60
+    OrderType orderType; // 0x80
+    uint256 startTime; // 0xa0
+    uint256 endTime; // 0xc0
+    bytes32 zoneHash; // 0xe0
+    uint256 salt; // 0x100
+    bytes32 conduitKey; // 0x120
+    uint256 totalOriginalConsiderationItems;
+	*/
+
 	encodeOrder(data) {
 		let protocolData = data.protocol_data;
 		let parameters = protocolData.parameters;
+
+		// return encode([
+		// 	"tuple(tuple(address, address, tuple(uint8, address, uint256, uint256, uint256)[], tuple(uint8, address, uint256, uint256, uint256, address)[], uint8, uint256, uint256, bytes32, uint256, bytes32, uint256), uint120, uint120, bytes, bytes)",
+		// 	"tuple(uint256, uint8, uint256, uint256, bytes32[])[]",
+		// 	"bytes32",
+		// 	"uint256",
+		// ], [
+		// 	[
+		// 		[
+		// 			parameters.offerer,
+		// 			parameters.zone,
+		// 			parameters.offer.map((item, index) => [
+		// 				item.itemType,
+		// 				item.token,
+		// 				item.identifierOrCriteria,
+		// 				item.startAmount,
+		// 				item.endAmount,
+		// 			]),
+		// 			parameters.consideration.map((item, index) => [
+		// 				item.itemType,
+		// 				item.token,
+		// 				item.identifierOrCriteria,
+		// 				item.startAmount,
+		// 				item.endAmount,
+		// 				item.recipient,
+		// 			]),
+		// 			parameters.orderType,
+		// 			parameters.startTime,
+		// 			parameters.endTime,
+		// 			parameters.zoneHash,
+		// 			parameters.salt,
+		// 			parameters.conduitKey,
+		// 			parameters.totalOriginalConsiderationItems,
+		// 		],
+		// 		0,
+		// 		1,
+		// 		protocolData.signature,
+		// 		"0x",
+		// 	],
+		// 	[
+		// 		...parameters.offer.map((item, index) => [
+		// 			0,
+		// 			0,
+		// 			index,
+		// 			item.identifierOrCriteria,
+		// 			[],
+		// 		]),
+		// 		...parameters.consideration.map((item, index) => [
+		// 			0,
+		// 			1,
+		// 			index,
+		// 			item.identifierOrCriteria,
+		// 			[],
+		// 		]),
+		// 	],
+		// 	"0x0000000000000000000000000000000000000000000000000000000000000000",
+		// 	data.price,
+		// ]);
+
 		return encode(
 			[
 				"tuple(address, uint256, uint256, address, address, address, uint256, uint256, uint8, uint256, uint256, bytes32, uint256, bytes32, bytes32, uint256, tuple(uint256, address)[], bytes)",

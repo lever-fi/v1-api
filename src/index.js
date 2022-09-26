@@ -3,7 +3,7 @@ import express from "express";
 import cors from "cors";
 import bodyParser from "body-parser";
 import cookieParser from "cookie-parser";
-import { BigNumber } from "ethers";
+import { BigNumber, utils } from "ethers";
 
 import { OpenSeaClient, LooksRareClient } from "integrations";
 import { encode } from "utils";
@@ -11,7 +11,10 @@ import { encode } from "utils";
 const app = express();
 const router = express.Router();
 
-const openSeaClient = new OpenSeaClient(process.env.OPENSEA_API_KEY);
+const openSeaClient = new OpenSeaClient(
+	process.env.OPENSEA_API_KEY,
+	process.env.RPC_URL
+);
 const looksRareClient = new LooksRareClient(process.env.LOOKSRARE_API_KEY);
 
 const clients = [
@@ -115,24 +118,30 @@ router.get("/best/listing", async (req, res) => {
 		for (let client of clients) {
 			prices.push(
 				BigNumber.from(
-					order[client[0]]?.price || Number.MAX_SAFE_INTEGER
+					order[client[0]]?.price ||
+						Number.MAX_SAFE_INTEGER.toString()
 				)
 			);
 		}
 
-		const minPrice = Math.min(prices);
-		const minIndex = prices.indexOf(minPrice);
+		let minIndex = 0;
 
-		const assetData = encode(
+		for (let i = 1; i < prices.length; i++) {
+			if (prices[i].lt(prices[minIndex])) {
+				minIndex = i;
+			}
+		}
+
+		const borrowData = encode(
 			["tuple(uint256, uint256, uint8)"],
-			[[tokenId, minPrice, minIndex]]
+			[[tokenId, prices[minIndex], minIndex]]
 		);
-		const purchaseData = clients[minIndex][1].encode(
+		const purchaseData = clients[minIndex][1].encodeOrder(
 			order[clients[minIndex][0]]
 		);
 
 		return res.status(200).send({
-			assetData,
+			borrowData,
 			purchaseData,
 			marketplace: clients[minIndex][0],
 			order: order[clients[minIndex][0]],
@@ -142,7 +151,73 @@ router.get("/best/listing", async (req, res) => {
 	}
 });
 
-const main = async (address) => {
+const main = async (collection, tokenId) => {
+	let order = {};
+	let prices = [];
+
+	for (let client of clients) {
+		const orderRes = await client[1].getOrder(collection, tokenId);
+		if (orderRes) {
+			order[client[0]] = orderRes;
+		}
+	}
+
+	if (Object.keys(order).length == 0) {
+		console.log("No orders exist");
+		return;
+		/* return res.status(404).send({
+			success: false,
+			message: "No listings exist on compatible marketplaces",
+		}); */
+	}
+
+	for (let client of clients) {
+		prices.push(
+			BigNumber.from(
+				(
+					order[client[0]]?.price || utils.parseEther("10000")
+				).toString()
+			)
+		);
+	}
+
+	// const minPrice = Math.min(prices);
+	// const minIndex = prices.indexOf(minPrice);
+
+	let minIndex = 0;
+
+	for (let i = 1; i < prices.length; i++) {
+		if (prices[i].lt(prices[minIndex])) {
+			minIndex = i;
+		}
+	}
+
+	const borrowData = encode(
+		["tuple(uint256, uint256, uint8)"],
+		[[tokenId, prices[minIndex], minIndex]]
+	);
+	const purchaseData = clients[minIndex][1].encodeOrder(
+		order[clients[minIndex][0]]
+	);
+
+	console.log({
+		borrowData,
+		purchaseData,
+		marketplace: clients[minIndex][0],
+		order: order[clients[minIndex][0]],
+	});
+
+	// console.log(order[clients[minIndex][0]].protocol_data.parameters);
+	// console.log(await openSeaClient.validateOrder(order[clients[minIndex][0]]));
+	// console.log(
+	// 	await openSeaClient.validateSignature(order[clients[minIndex][0]])
+	// );
+	// console.log(
+	// 	await openSeaClient.validateConsiderationItems(
+	// 		order[clients[minIndex][0]]
+	// 	)
+	// );
+
 	/* const lrOrder = await looksRareClient.getOrder(
 		"0x104Edd8aABf30bDCc96252edb80aef9Fcb69fdD5",
 		"1",
@@ -168,7 +243,7 @@ const main = async (address) => {
 	//const stats = await openseaClient.getStats(address);
 	//console.log(stats); */
 
-	let order = {};
+	/* let order = {};
 	let prices = [];
 	const collection = "0x0dB7b821f5047eD6685aC25B30c0CFe9364E1f8d";
 	const tokenId = 49;
@@ -201,10 +276,11 @@ const main = async (address) => {
 		purchaseData,
 		marketplace: clients[minIndex][0],
 		order: order[clients[minIndex][0]],
-	});
+	}); */
 };
 
-main("0x8a90cab2b38dba80c64b7734e58ee1db38b8992e");
+//https://looksrare.org/collections/0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D/2327
+main("0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D", "4778");
 
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
